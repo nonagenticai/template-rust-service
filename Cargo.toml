@@ -1,0 +1,82 @@
+# Created from nonagenticai/template-rust-service; scripts/rename.sh sets the real name.
+[package]
+name = "template-rust-service"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "A Rust HTTP service template: axum, sqlx/Postgres, OpenAPI, migrations"
+license = "Apache-2.0"
+
+[lib]
+name = "template_rust_service"
+path = "src/lib.rs"
+
+[[bin]]
+name = "template-rust-service"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.53.3", features = ["full"] }
+axum = "0.8.9"
+# Runtime queries only (sqlx::query / query_as with binds). Never the compile-time
+# `query!` macros: they need a live DB (or an offline cache) at build time. `macros` is
+# here for `sqlx::migrate!`, which only embeds migrations/ and needs no DB.
+sqlx = { version = "0.9.0", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "migrate",
+    "macros",
+    "json",
+] }
+utoipa = { version = "6.0.0", features = ["axum_extras"] }
+utoipa-axum = "0.3.0"
+clap = { version = "4.6.7", features = ["derive", "env"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+thiserror = "2.0.21"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+tower-http = { version = "0.7.1", features = ["trace"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1.5"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Keep the dev profile small. Cargo's default is `debug = 2` — full DWARF for
+# every crate: a 387-dependency workspace once reached 53 GiB of target/debug.
+# `debug = 1` keeps line tables, so a panic backtrace still names file:line, and
+# drops the type/variable information that is the bulk of the bytes. A service
+# that genuinely needs full symbols can set `debug = 2` here and get exactly
+# that everywhere, because this lives in the repository rather than in a
+# machine-level ~/.cargo/config.toml (which cargo would apply invisibly, and
+# which a fresh clone and CI would not see).
+#
+# Release is untouched: it already defaults to `debug = 0`, and this template's
+# Dockerfile builds release.
+[profile.dev]
+debug = 1
+
+# RUSTSEC-2026-0459 — REMOVE THIS BLOCK when sqlx releases the fix.
+#
+# `sqlx` is declared above with the postgres driver only; this service uses no sqlite. But
+# Cargo still resolves `sqlx-sqlite` into Cargo.lock, because sqlx's `migrate` and `json`
+# features reference it weakly (`sqlx-sqlite?/migrate`). `cargo tree -i sqlx-sqlite` prints
+# "nothing to print" — it is never compiled — but `cargo audit` scans the lock, not the
+# build graph.
+#
+# sqlx-sqlite 0.9.0 pins `libsqlite3-sys >=0.30.1, <0.38.0`, and RUSTSEC-2026-0459 is only
+# fixed in libsqlite3-sys >= 0.39.0, so no published version of the dependency can carry the
+# fix. sqlx main has widened the bound to `<0.40.0`; pinning sqlx-sqlite to that commit lets
+# libsqlite3-sys resolve to the fixed 0.39.x instead of muting the advisory.
+#
+# Trade-off, deliberate: one package is pinned to a git rev. sqlx-sqlite is never compiled,
+# so it cannot affect the built binary, and the rev is recorded in Cargo.lock, so `--locked`
+# builds stay reproducible.
+#
+# ⚠️ WHEN sqlx publishes a release whose sqlx-sqlite accepts libsqlite3-sys >= 0.39, delete
+# this block, delete the git entry from Cargo.lock (`cargo update -p sqlx-sqlite`), and
+# confirm `cargo audit` still passes.
+[patch.crates-io]
+sqlx-sqlite = { git = "https://github.com/launchbadge/sqlx", rev = "987b8c5a74b6da8b71da6b5549925a7f6e59aac9" }

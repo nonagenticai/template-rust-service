@@ -1,0 +1,32 @@
+# Optional parity contract: compare this service against one or more source services it was
+# ported from (schema diff, OpenAPI diff, record + replay). The values below are placeholders;
+# fill them in for the service you are porting, or leave the file alone.
+
+# Source repositories being ported, as owner/name. One entry, or several when this target
+# merges services (openapi-diff then compares against the UNION of their specs).
+source_repos = []            # e.g. ["example/python-service"]
+
+# Pinned source commits, same order and length as source_repos. Parity is only valid
+# against pinned SHAs (gate G4) - never a branch name.
+source_shas = []             # e.g. ["0123456789abcdef0123456789abcdef01234567"]
+
+# How to obtain each source's OpenAPI document, same order as source_repos: a path inside
+# that source repo at its pinned SHA, or a command run in its checkout that prints JSON.
+source_openapi = []          # e.g. ["openapi.json"] or ["uv run python -m app.openapi"]
+
+# Command, run in this repo, that prints this service's OpenAPI JSON to stdout.
+target_openapi_cmd = "cargo run --locked --quiet -- --print-openapi"
+
+# Recorded/hand-written requests replayed against both stacks (JSON Lines, one request
+# per line; trusted X-Tenant-* headers included as the edge would send them).
+requests_file = "parity/requests.jsonl"
+
+# External systems the service calls. During replay each is served by the workspace's
+# ws-upstream stub from fixtures, and the outbound-call sequence is part of the diff.
+# One table per upstream:
+#
+# [[upstreams]]
+# name = "github"                       # label used in fixtures and diffs
+# env = "GITHUB_API_URL"                # env var holding the base URL in BOTH stacks
+# fixtures = "parity/upstreams/github"  # recorded responses / OpenAPI examples
+upstreams = []
