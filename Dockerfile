@@ -1,12 +1,12 @@
 # template-rust-service image.
 #
-# Both stages are debian:12-slim from Docker Hub, so builder and runtime share one glibc and
+# Both stages are debian:13-slim from Docker Hub, so builder and runtime share one glibc and
 # `docker build .` works on a fresh clone with no registry credentials. The builder installs
 # the pinned toolchain with rustup.
 # RUST_TOOLCHAIN must equal rust-toolchain.toml.
 ARG RUST_TOOLCHAIN=1.99.0
 
-FROM debian:12-slim AS build
+FROM debian:13-slim AS build
 ARG RUST_TOOLCHAIN
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # cmake/perl: aws-lc-sys (rustls' default crypto provider, via sqlx tls-rustls).
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release --locked \
     && install -D -m 0755 target/release/template-rust-service /out/service
 
-FROM debian:12-slim AS runtime
+FROM debian:13-slim AS runtime
 # ca-certificates: outbound https (rustls-native-certs). curl: the HEALTHCHECK.
 # hadolint ignore=DL3008
 RUN apt-get update \
