@@ -1,0 +1,27 @@
+# Compile gate for lane branches — GitHub-hosted, no self-hosted runner, no local cargo.
+#
+# Not a second CI and it writes no required status. It answers the one question the PR CI
+# answers last (fmt + `cargo clippy --all-targets -D warnings`) on every push to a lane
+# branch, so a lane learns it does not compile before paying for the PR gate. It is
+# cancelled by its successor and never saves the rust-cache (save-if is main-only).
+name: preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['issue/**', 'lane/**', 'slice/**']
+
+concurrency:
+  group: preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    uses: nonagenticai/ci-workflows/.github/workflows/rust-preflight.yml@d2ae87a417b00013838ba18841cdd1642b83fb89
+    with:
+      # Fleet-wide convention for the rust-cache shared key. The other defaults are the
+      # right ones here: whole-workspace clippy (`package` empty), no Postgres.
+      cache_shared_key: checks
